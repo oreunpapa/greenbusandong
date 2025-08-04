@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>허승규의 안동을 위한 공공버스 정책 제안</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: A top-down, narrative-driven single-page scroll. It starts with the problem (Andong's situation), presents an inspiring solution (Seongdong-gu case), details the adapted plan for Andong (custom strategy and budget/funding), and concludes with the positive vision (expected impact). This story-like flow is more engaging and persuasive for a general audience than the original report's academic structure. A sticky navigation bar allows users to jump to these key logical sections, facilitating easy exploration. -->
+    <!-- Visualization & Content Choices: 
+        1. Andong's Problem: Goal(Inform/Compare) -> Viz(Donut Chart for financial independence, Stat Cards for key numbers) -> Interaction(Hover tooltips) -> Justification(Instantly highlights the core financial and demographic issues) -> Lib/Method(Chart.js, HTML/Tailwind).
+        2. Seongdong's Success: Goal(Compare/Inform) -> Viz(Horizontal Bar Chart comparing budgets, Icon-based feature list) -> Interaction(None) -> Justification(Visually argues the potential cost-effectiveness and simplicity of the successful model) -> Lib/Method(Chart.js, HTML/Tailwind).
+        3. Andong's Strategy: Goal(Organize/Explore) -> Viz(HTML/CSS visual flow diagram, JS-powered toggle buttons for target groups) -> Interaction(Clicking diagram elements or toggles reveals specific details) -> Justification(Makes the abstract strategy concrete and shows how it addresses different needs) -> Lib/Method(HTML/CSS/JS).
+        4. Budget & Funding: Goal(Inform/Explore) -> Viz(Stacked Bar Chart for funding sources, Interactive budget slider, Gemini API integration) -> Interaction(Hovering segments on the chart, dragging the slider to see budget-level details, asking a question to Gemini) -> Justification(Clearly communicates the multi-source funding plan and adds an interactive Q&A for budget details) -> Lib/Method(Chart.js, HTML/JS, Gemini API).
+        5. Expected Impact: Goal(Inform) -> Viz(Benefit cards grid, Large B/C ratio display, Gemini API integration) -> Interaction(Hover for info on B/C ratio, generating a personalized narrative with Gemini) -> Justification(Ends the narrative on a strong, positive note and makes the benefits personal and relatable) -> Lib/Method(HTML/Tailwind, Gemini API).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F8F5F2;
+            color: #333;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #587465;
+            border-bottom-color: #587465;
+        }
+        .section-title {
+            color: #587465;
+        }
+        .stat-card {
+            background-color: white;
+            border-left: 5px solid #587465;
+        }
+        .strategy-box {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .strategy-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .funding-source-bar-segment {
+            transition: opacity 0.3s;
+        }
+        .funding-source-bar-segment:hover {
+            opacity: 0.8;
+        }
+        .tab-button {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .tab-button.active {
+            background-color: #587465;
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #587465;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="scroll-smooth">
+
+    <header class="bg-white/80 backdrop-blur-md shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-gray-800">
+                <span class="text-[#587465]">안동형 공공버스</span> 정책 제안
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#problem" class="nav-link">문제 제기</a>
+                <a href="#solution" class="nav-link">성공 사례</a>
+                <a href="#strategy" class="nav-link">맞춤 전략</a>
+                <a href="#budget" class="nav-link">예산 및 재원</a>
+                <a href="#impact" class="nav-link">기대 효과</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        
+        <section id="hero" class="text-center mb-24">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">모두를 위한 안동, <span class="text-[#587465]">공공버스</span>로 시작합니다</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">
+                허승규 후보가 제안하는 안동시 맞춤형 공공 버스 정책을 소개합니다.
+                이동권은 시민의 보편적 권리입니다. 세금, 더 가치있게 사용하여 시민의 발이 되겠습니다.
+            </p>
+        </section>
+
+        <section id="problem" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2 section-title">1. 안동의 현실: 무엇이 문제일까요?</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">안동시는 낮은 재정자립도와 넓고 분산된 인구 구조라는 이중고를 겪고 있습니다. 막대한 예산이 민간 버스회사 지원에 쓰이지만, 시민들의 교통 불편은 여전합니다.</p>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-center">
+                <div class="lg:col-span-1">
+                    <div class="chart-container h-[250px] md:h-[300px]">
+                        <canvas id="financialIndependenceChart"></canvas>
+                    </div>
+                    <p class="text-center mt-2 text-sm text-gray-500">2024년 기준 재정자립도 비교</p>
+                </div>
+                <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="stat-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800">민간 운수업체 지원금</h3>
+                        <p class="text-3xl font-bold text-[#587465] my-2">약 193억 원</p>
+                        <p class="text-gray-600">2020년 기준, 매년 막대한 시민 세금이 민간 기업의 손실 보전에 쓰이고 있습니다.</p>
+                    </div>
+                    <div class="stat-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800">연간 발생하는 불용예산</h3>
+                        <p class="text-3xl font-bold text-[#587465] my-2">약 2,029억 원</p>
+                        <p class="text-gray-600">2024년 기준, 계획성 없는 예산 운용으로 쓰이지 않고 남는 돈이 상당합니다.</p>
+                    </div>
+                    <div class="stat-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800">낮은 인구 밀도</h3>
+                        <p class="text-3xl font-bold text-[#587465] my-2">102명/㎢</p>
+                        <p class="text-gray-600">넓은 지역에 인구가 분산되어 있어, 획일적인 버스 노선은 비효율적일 수밖에 없습니다.</p>
+                    </div>
+                     <div class="stat-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800">핵심 결론</h3>
+                        <p class="text-xl font-bold text-[#587465] my-2">돈이 없는게 아니라, <br>비효율적으로 쓰이고 있습니다.</p>
+                        <p class="text-gray-600">기존 예산을 재분배하고 효율화하면, 새로운 공공 서비스를 충분히 만들 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solution" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2 section-title">2. 성공 사례: 서울 성동구 '성공버스'</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">비슷한 고민을 먼저 해결한 사례가 있습니다. 성동구는 '성공버스'를 통해 교통 사각지대를 해소하고 주민들의 큰 호응을 얻었습니다.</p>
+
+            <div class="bg-white p-8 rounded-xl shadow-lg grid md:grid-cols-5 gap-8 items-center">
+                <div class="md:col-span-3">
+                    <h3 class="text-2xl font-bold mb-4">성공버스의 특징</h3>
+                    <ul class="space-y-3 text-gray-700">
+                        <li class="flex items-start"><span class="text-2xl mr-3">🚌</span><div><strong class="font-semibold text-gray-800">공공시설 셔틀:</strong> 일반 노선이 아닌, 주민센터, 도서관, 체육시설 등 필수 공공시설을 연결하는 무료 셔틀입니다.</div></li>
+                        <li class="flex items-start"><span class="text-2xl mr-3">💰</span><div><strong class="font-semibold text-gray-800">100% 구 예산 운영:</strong> 요금 수입 없이, 구 예산으로 직접 운영하여 이동권을 공공 복지 서비스로 제공합니다.</div></li>
+                        <li class="flex items-start"><span class="text-2xl mr-3">✅</span><div><strong class="font-semibold text-gray-800">높은 주민 만족도:</strong> 이용자 87%가 만족, 94%가 재이용 의사를 밝혔으며 '성동구 10대 뉴스' 1위로 선정되었습니다.</div></li>
+                    </ul>
+                </div>
+                <div class="md:col-span-2">
+                    <div class="chart-container h-[250px] md:h-[300px]">
+                        <canvas id="seongdongBudgetChart"></canvas>
+                    </div>
+                    <p class="text-center mt-2 text-sm text-gray-500">연간 운영비 비교</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="strategy" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2 section-title">3. 안동 맞춤 전략: '안동형 행복버스'</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">성공 사례를 그대로 모방하는 것이 아니라, 안동의 특성에 맞게 재설계해야 합니다. 핵심은 '농촌과 도시의 연결'입니다.</p>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-lg strategy-box">
+                    <h3 class="text-2xl font-bold mb-4 text-center">핵심 전략: 하이브리드 모델</h3>
+                    <div class="flex flex-col items-center justify-center space-y-4">
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <p class="text-4xl">🏡</p>
+                            <p class="font-semibold">면 단위 농촌 지역</p>
+                        </div>
+                        <div class="text-3xl text-[#587465] font-bold animate-pulse">↓ ↑</div>
+                        <div id="bus-diagram" class="text-center p-4 bg-[#587465] text-white rounded-full w-48 h-48 flex flex-col justify-center items-center cursor-pointer">
+                            <p class="text-5xl">🚌</p>
+                            <p class="font-bold text-lg">'안동형 행복버스'</p>
+                            <p id="bus-info" class="text-xs mt-1 opacity-0 transition-opacity duration-300">고정노선 + 수요응답형(DRT)</p>
+                        </div>
+                        <div class="text-3xl text-[#587465] font-bold animate-pulse">↓ ↑</div>
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <p class="text-4xl">🏥🏪🏫</p>
+                            <p class="font-semibold">도심 핵심 공공시설</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl shadow-lg strategy-box">
+                    <h3 class="text-2xl font-bold mb-4 text-center">주요 대상별 맞춤 지원</h3>
+                    <p class="text-center text-gray-500 mb-6">모두에게 혜택이 돌아가지만, 교통 약자에게는 더 두터운 지원이 필요합니다.</p>
+                    <div class="flex justify-center mb-6">
+                        <button id="youth-tab" class="tab-button active px-6 py-2 rounded-l-full border border-gray-300">청소년</button>
+                        <button id="elderly-tab" class="tab-button px-6 py-2 rounded-r-full border border-gray-300">어르신</button>
+                    </div>
+                    <div id="tab-content" class="text-center">
+                        <div id="youth-content">
+                            <h4 class="text-xl font-semibold text-[#587465]">청소년 무상교통</h4>
+                            <p class="mt-2 text-gray-700">허승규 후보가 기존에 제안했던 정책으로, 연간 100만원 한도 내에서 청소년(중·고등학생 및 학교 밖 청소년)에게 버스 요금을 지원하여 학업과 사회 활동을 돕습니다.</p>
+                        </div>
+                        <div id="elderly-content" class="hidden">
+                            <h4 class="text-xl font-semibold text-[#587465]">어르신 무상교통</h4>
+                            <p class="mt-2 text-gray-700">경상북도에서 추진 중인 70세 이상 어르신 버스 무료 이용 사업과 연계하여, 어르신들의 병원 방문, 장보기 등 필수적인 외부 활동을 보장합니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="budget" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2 section-title">4. 예산 및 재원: 돈은 어디서 나올까요?</h2>
+            <p class="text-center text-gray-600 max-w-3xl mx-auto">새로운 세금을 걷는 것이 아닙니다. 기존 예산을 효율적으로 재배분하고, 중앙정부와 경상북도의 지원을 적극적으로 유치하는 다각화된 전략으로 충분히 가능합니다.</p>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center mt-12">
+                <div>
+                    <h3 class="text-2xl font-bold mb-4 text-center">연간 예상 소요 예산</h3>
+                    <div class="px-4">
+                        <input type="range" id="budget-slider" min="50" max="100" value="75" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>50억</span>
+                            <span>75억</span>
+                            <span>100억</span>
+                        </div>
+                    </div>
+                    <div id="budget-details" class="mt-6 p-6 bg-green-50 rounded-lg text-center">
+                        <p class="text-3xl font-bold text-[#587465]" id="budget-amount">75억 원</p>
+                        <p class="text-gray-700 mt-2" id="budget-description">핵심 노선 운영 및 농촌 지역 DRT 도입, 교통약자 지원 강화</p>
+                    </div>
+                    <button id="ask-budget-btn" class="mt-6 w-full py-3 px-6 bg-[#587465] text-white font-bold rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300">
+                        ✨ 제미나이에게 예산 질문하기
+                    </button>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold mb-4 text-center">다각화된 재원 조달 방안</h3>
+                    <div class="chart-container h-[300px] md:h-[350px]">
+                        <canvas id="fundingSourceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="impact" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2 section-title">5. 기대 효과: 무엇이 달라질까요?</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">공공 버스는 단순한 교통수단을 넘어, 안동의 미래를 위한 현명한 투자입니다. 시민의 삶과 지역 경제에 활력을 불어넣을 것입니다.</p>
+
+            <div class="text-center mb-12">
+                <h3 class="text-xl font-semibold">비용-편익(B/C) 분석 결과</h3>
+                <p class="text-5xl font-bold text-[#587465] my-2">1.84 ~ 5.0</p>
+                <p class="text-gray-600">이미 연구를 통해 입증되었습니다. 1원을 투자하면 최소 1.84원에서 최대 5원의 사회적, 경제적 편익이 발생합니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-lg text-center strategy-box">
+                    <p class="text-4xl mb-3">🚶‍♀️</p>
+                    <h4 class="font-bold text-lg">이동권 증진</h4>
+                    <p class="text-sm text-gray-600 mt-1">교통 약자를 포함한 모든 시민이 원하는 곳으로 자유롭게 이동합니다.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg text-center strategy-box">
+                    <p class="text-4xl mb-3">👛</p>
+                    <h4 class="font-bold text-lg">가계 부담 경감</h4>
+                    <p class="text-sm text-gray-600 mt-1">교통비 절감으로 가계 경제에 실질적인 보탬이 됩니다.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg text-center strategy-box">
+                    <p class="text-4xl mb-3">📈</p>
+                    <h4 class="font-bold text-lg">지역 경제 활성화</h4>
+                    <p class="text-sm text-gray-600 mt-1">상권으로의 접근성이 높아져 지역 경제에 활력이 생깁니다.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg text-center strategy-box">
+                    <p class="text-4xl mb-3">🌳</p>
+                    <h4 class="font-bold text-lg">환경 개선</h4>
+                    <p class="text-sm text-gray-600 mt-1">자가용 이용이 줄어들어 더 깨끗한 안동을 만듭니다.</p>
+                </div>
+            </div>
+             <button id="ask-impact-btn" class="mt-12 mx-auto block py-3 px-6 bg-[#587465] text-white font-bold rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300">
+                ✨ 제미나이에게 정책 효과 체험하기
+            </button>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-24">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p class="font-semibold">허승규의 안동형 공공버스 정책 제안</p>
+            <p class="text-sm text-gray-400 mt-2">본 내용은 제공된 '허승규 후보의 안동시 공공 버스 정책' 보고서를 기반으로 제작되었습니다.</p>
+        </div>
+    </footer>
+
+    <!-- Modal for Gemini API responses -->
+    <div id="geminiModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 class="text-xl font-bold mb-4" id="modal-title"></h3>
+            <div id="modal-body" class="text-gray-700">
+                <div id="loading-spinner" class="loading-spinner mx-auto hidden"></div>
+                <div id="modal-text"></div>
+                <div id="modal-form" class="mt-4 hidden">
+                    <input type="text" id="user-input1" placeholder="당신의 나이나 직업은?" class="w-full p-2 border border-gray-300 rounded-md mb-2">
+                    <input type="text" id="user-input2" placeholder="거주하는 동네는?" class="w-full p-2 border border-gray-300 rounded-md">
+                    <button id="generate-btn" class="mt-4 w-full py-2 bg-[#587465] text-white rounded-md">생성하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const financialCtx = document.getElementById('financialIndependenceChart').getContext('2d');
+            new Chart(financialCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['안동시 재정자립도', '미자립'],
+                    datasets: [{
+                        label: '재정자립도',
+                        data: [9.8, 90.2],
+                        backgroundColor: ['#587465', '#E5E7EB'],
+                        borderColor: '#F8F5F2',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '안동시 재정자립도 (9.8%)'
+                        }
+                    }
+                }
+            });
+
+            const seongdongBudgetCtx = document.getElementById('seongdongBudgetChart').getContext('2d');
+            new Chart(seongdongBudgetCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['성동구 연간 예상(2개 노선)', '안동시 기존 민간 지원금'],
+                    datasets: [{
+                        label: '예산 (억 원)',
+                        data: [20, 193],
+                        backgroundColor: ['#A3B8A9', '#587465'],
+                        borderColor: ['#A3B8A9', '#587465'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '연간 운영비 비교'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '단위: 억 원'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const fundingSourceCtx = document.getElementById('fundingSourceChart').getContext('2d');
+            new Chart(fundingSourceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['예상 재원 구성'],
+                    datasets: [
+                        {
+                            label: '지자체 자체 예산 (35%)',
+                            data: [35],
+                            backgroundColor: '#587465',
+                        },
+                        {
+                            label: '경상북도 지원 (35%)',
+                            data: [35],
+                            backgroundColor: '#869D8D',
+                        },
+                        {
+                            label: '중앙 정부 지원 (25%)',
+                            data: [25],
+                            backgroundColor: '#A3B8A9',
+                        },
+                        {
+                            label: '기타 (5%)',
+                            data: [5],
+                            backgroundColor: '#C1D3C6',
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label;
+                                }
+                            }
+                        },
+                         title: {
+                            display: true,
+                            text: '재원 조달 방안 (%)'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            display: false
+                        },
+                        y: {
+                            stacked: true,
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            const budgetSlider = document.getElementById('budget-slider');
+            const budgetAmount = document.getElementById('budget-amount');
+            const budgetDescription = document.getElementById('budget-description');
+            budgetSlider.addEventListener('input', (event) => {
+                const value = event.target.value;
+                budgetAmount.textContent = `${value}억 원`;
+                if (value < 65) {
+                    budgetDescription.textContent = '핵심 3개 노선 및 DRT 시범 운영, 교통약자 우선 지원';
+                } else if (value < 85) {
+                    budgetDescription.textContent = '주요 노선 확대 운영 및 농촌 지역 DRT 도입, 교통약자 지원 강화';
+                } else {
+                    budgetDescription.textContent = '전면 확대 운영, 전 연령층 할인 혜택 및 스마트 시스템 고도화';
+                }
+            });
+
+            const youthTab = document.getElementById('youth-tab');
+            const elderlyTab = document.getElementById('elderly-tab');
+            const youthContent = document.getElementById('youth-content');
+            const elderlyContent = document.getElementById('elderly-content');
+            
+            youthTab.addEventListener('click', () => {
+                youthTab.classList.add('active');
+                elderlyTab.classList.remove('active');
+                youthContent.classList.remove('hidden');
+                elderlyContent.classList.add('hidden');
+            });
+
+            elderlyTab.addEventListener('click', () => {
+                elderlyTab.classList.add('active');
+                youthTab.classList.remove('active');
+                elderlyContent.classList.remove('hidden');
+                youthContent.classList.add('hidden');
+            });
+
+            const busDiagram = document.getElementById('bus-diagram');
+            const busInfo = document.getElementById('bus-info');
+            busDiagram.addEventListener('mouseenter', () => {
+                busInfo.classList.remove('opacity-0');
+            });
+             busDiagram.addEventListener('mouseleave', () => {
+                busInfo.classList.add('opacity-0');
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section[id]');
+            
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 80) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            const geminiModal = document.getElementById('geminiModal');
+            const closeModalBtn = document.querySelector('.close-button');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const modalForm = document.getElementById('modal-form');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const generateBtn = document.getElementById('generate-btn');
+
+            const askBudgetBtn = document.getElementById('ask-budget-btn');
+            const askImpactBtn = document.getElementById('ask-impact-btn');
+
+            askBudgetBtn.addEventListener('click', () => {
+                modalTitle.textContent = '예산에 대해 질문하기';
+                modalText.textContent = '현재 정책의 예산 규모, 예산 조달 방안에 대해 궁금한 점을 질문해주세요. (예: 75억원의 예산이면 어떤 사업이 가능한가요?)';
+                modalForm.classList.remove('hidden');
+                document.getElementById('user-input1').placeholder = '질문 내용을 입력해주세요';
+                document.getElementById('user-input2').classList.add('hidden');
+                geminiModal.style.display = 'flex';
+                generateBtn.onclick = () => callGeminiBudget();
+            });
+
+            askImpactBtn.addEventListener('click', () => {
+                modalTitle.textContent = '정책 효과 체험하기';
+                modalText.textContent = '당신의 나이와 직업을 입력하시면, 정책이 당신의 일상에 어떤 영향을 미칠지 이야기로 들려드립니다.';
+                modalForm.classList.remove('hidden');
+                document.getElementById('user-input1').placeholder = '당신의 나이나 직업은?';
+                document.getElementById('user-input2').placeholder = '거주하는 동네는?';
+                document.getElementById('user-input2').classList.remove('hidden');
+                geminiModal.style.display = 'flex';
+                generateBtn.onclick = () => callGeminiImpact();
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                geminiModal.style.display = 'none';
+                modalForm.classList.add('hidden');
+                document.getElementById('user-input1').value = '';
+                document.getElementById('user-input2').value = '';
+                modalText.textContent = '';
+                loadingSpinner.classList.add('hidden');
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target == geminiModal) {
+                    geminiModal.style.display = 'none';
+                    modalForm.classList.add('hidden');
+                    document.getElementById('user-input1').value = '';
+                    document.getElementById('user-input2').value = '';
+                    modalText.textContent = '';
+                    loadingSpinner.classList.add('hidden');
+                }
+            });
+
+            let retryCount = 0;
+            const maxRetries = 5;
+
+            async function callGeminiAPI(prompt, onResponse) {
+                loadingSpinner.classList.remove('hidden');
+                modalText.classList.add('hidden');
+                modalForm.classList.add('hidden');
+                const budgetData = `허승규의 안동 공공버스 정책 제안 보고서 내용:
+                - 안동시 재정자립도: 9.8%
+                - 연간 불용예산: 약 2,029억 원 (2024년 기준)
+                - 기존 민간 버스업체 지원금: 약 193억 원 (2020년 기준)
+                - 정책 예상 소요 예산: 50억 ~ 100억 원
+                - 재원 조달 방안: 지자체 자체 예산 (35%), 경상북도 지원 (35%), 중앙 정부 지원 (25%), 기타 (5%)
+                - 주요 내용: 성동구 성공버스 사례를 바탕으로 안동에 맞게 재설계. 농촌 DRT와 도시 공공시설 셔틀을 결합한 하이브리드 모델. 청소년, 어르신 무상교통 지원.
+                - 기대 효과: B/C 비율 1.84~5.0, 이동권 증진, 가계 부담 경감, 지역 경제 활성화, 환경 개선.`;
+                const fullPrompt = `${budgetData}\n\n위의 정보를 참고하여 아래 질문에 답해주세요. 사용자가 이해하기 쉽게, 친절하고 자세하게 설명해 주세요.\n\n질문: ${prompt}`;
+
+                try {
+                    const chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: fullPrompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        if (response.status === 429 && retryCount < maxRetries) {
+                            const delay = Math.pow(2, retryCount) * 1000;
+                            retryCount++;
+                            setTimeout(() => callGeminiAPI(prompt, onResponse), delay);
+                            return;
+                        } else {
+                            throw new Error(`API error: ${response.statusText}`);
+                        }
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        onResponse(text);
+                    } else {
+                        onResponse("응답을 생성하는 데 실패했습니다. 다시 시도해주세요.");
+                    }
+                } catch (error) {
+                    console.error('API 호출 중 오류 발생:', error);
+                    onResponse("API 호출 중 오류가 발생했습니다. 다시 시도해주세요.");
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                    modalText.classList.remove('hidden');
+                }
+            }
+            
+            async function callGeminiBudget() {
+                const question = document.getElementById('user-input1').value;
+                if (!question.trim()) {
+                    modalText.textContent = "질문을 입력해주세요.";
+                    return;
+                }
+                const prompt = `정책 예산에 대한 다음 질문에 답변해주세요: "${question}"`;
+                await callGeminiAPI(prompt, (response) => {
+                    modalText.textContent = response;
+                });
+            }
+
+            async function callGeminiImpact() {
+                const ageJob = document.getElementById('user-input1').value;
+                const location = document.getElementById('user-input2').value;
+                if (!ageJob.trim() || !location.trim()) {
+                    modalText.textContent = "나이/직업과 동네를 모두 입력해주세요.";
+                    return;
+                }
+                const prompt = `나이/직업이 '${ageJob}'이고 안동의 '${location}'에 사는 사람을 위해, 허승규의 공공버스 정책이 어떤 긍정적인 영향을 미칠지 구체적인 시나리오를 작성해줘.`;
+                await callGeminiAPI(prompt, (response) => {
+                    modalText.textContent = response;
+                });
+            }
+        });
+    </script>
+</body>
+</html>
